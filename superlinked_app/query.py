@@ -1,135 +1,152 @@
-import google.auth
-import google.auth.transport.requests
-from google.oauth2 import service_account
+from collections import namedtuple
+
 from superlinked import framework as sl
 
-from superlinked_app import constants, index
-from superlinked_app.config import settings
-
-VERTEX_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
-
-
-def _get_vertex_credentials():
-    """Get OAuth2 credentials from the service account file."""
-    from superlinked_app.config import ROOT_DIR
-
-    creds_path = ROOT_DIR / settings.GOOGLE_APPLICATION_CREDENTIALS
-    credentials = service_account.Credentials.from_service_account_file(
-        str(creds_path),
-        scopes=VERTEX_SCOPES,
-    )
-    credentials.refresh(google.auth.transport.requests.Request())
-    return credentials
-
-
-_credentials = _get_vertex_credentials()
-
-vertex_base_url = (
-    f"https://{settings.VERTEX_LOCATION}-aiplatform.googleapis.com/v1beta1/"
-    f"projects/{_credentials.project_id}/locations/{settings.VERTEX_LOCATION}/"
-    f"endpoints/openapi/"
+from superlinked_app import constants
+from superlinked_app.index import (
+    description_space,
+    price_space,
+    product,
+    product_index,
+    review_count_space,
+    review_rating_space,
+    title_space,
+)
+from superlinked_app.nlq import (
+    description_description,
+    gemini_config,
+    price_description,
+    review_count_description,
+    review_rating_description,
+    system_prompt,
+    title_description,
 )
 
-gemini_config = sl.OpenAIClientConfig(
-    api_key=_credentials.token,
-    model=settings.VERTEX_MODEL_ID,
-    base_url=vertex_base_url,
-    project=_credentials.project_id,
-)
+# Debug query to check if server has data ingested
+query_debug = sl.Query(product_index).find(product).limit(3).select_all()
 
-
-title_similar_param = sl.Param(
-    "query_title",
-    description=(
-        "The text in the user's query that is used to search in the products' title."
-        "Extract info that does not apply to other spaces or params."
-    ),
-)
-text_similar_param = sl.Param(
-    "query_description",
-    description=(
-        "The text in the user's query that is used to search in the products' description."
-        " Extract info that does not apply to other spaces or params."
-    ),
-)
-
-base_query = (
+# Main query for multi-modal semantic search
+query = (
     sl.Query(
-        index.product_index,
+        product_index,
         weights={
-            index.title_space: sl.Param("title_weight"),
-            index.description_space: sl.Param("description_weight"),
-            index.review_rating_maximizer_space: sl.Param(
-                "review_rating_maximizer_weight"
+            title_space: sl.Param("title_weight", default=1.0),
+            description_space: sl.Param("description_weight", default=1.0),
+            review_rating_space: sl.Param(
+                "review_rating_weight",
+                description=review_rating_description,
             ),
-            index.price_minimizer_space: sl.Param("price_minimizer_weights"),
+            price_space: sl.Param(
+                "price_weight",
+                description=price_description,
+            ),
+            review_count_space: sl.Param(
+                "review_count_weight",
+                description=review_count_description,
+            ),
         },
     )
-    .find(index.product)
-    .select_all()
-    .limit(sl.Param("limit"))
-    .with_natural_query(sl.Param("natural_query"), gemini_config)
-    .filter(
-        index.product.type
-        == sl.Param(
-            "filter_by_type",
-            description="Used to only present items that have a specific type",
-            options=constants.TYPES,
-        )
-    )
-)
-
-filter_query = (
-    base_query.similar(
-        index.description_space,
-        text_similar_param,
-        sl.Param("description_similar_clause_weight"),
-    )
-    .filter(
-        index.product.category.contains(
-            sl.Param(
-                "filter_by_cateogry",
-                description="Used to only present items that have a specific cateogry",
-                options=constants.CATEGORIES,
-            )
-        )
-    )
-    .filter(
-        index.product.review_rating
-        >= sl.Param(
-            "review_rating_bigger_than",
-            description="Used to find items with a review rating bigger than the provided number.",
-        )
-    )
-    .filter(
-        index.product.price
-        <= sl.Param(
-            "price_smaller_than",
-            description="Used to find items with a price smaller than the provided number.",
-        )
-    )
-)
-
-semantic_query = (
-    base_query.similar(
-        index.description_space,
-        text_similar_param,
-        sl.Param("description_similar_clause_weight"),
+    .find(product)
+    .similar(
+        description_space.text,
+        sl.Param("query_description", description=description_description),
+        weight=sl.Param("similar_description_weight", default=1.0),
     )
     .similar(
-        index.title_space,
-        title_similar_param,
-        sl.Param("title_similar_clause_weight"),
+        title_space.text,
+        sl.Param("query_title", description=title_description),
+        weight=sl.Param("similar_title_weight", default=1.0),
+    )
+)
+
+# Result limit and metadata
+query = query.limit(sl.Param("limit", default=3))
+query = query.select_all()
+query = query.include_metadata()
+
+# Hard filters: product type
+query = query.filter(
+    product.type
+    == sl.Param(
+        "filter_by_type",
+        description="Used to only present items of a specific type.",
+        options=constants.TYPES,
+    )
+)
+
+# Hard filters: numeric ranges
+query = (
+    query.filter(
+        product.review_rating
+        >= sl.Param(
+            "min_review_rating",
+            description="Minimum review rating (0-5 scale).",
+        )
     )
     .filter(
-        index.product.category.contains(
-            sl.Param(
-                "filter_by_cateogry",
-                description="Used to only present items that have a specific cateogry",
-                options=constants.CATEGORIES,
-            )
+        product.review_rating
+        <= sl.Param(
+            "max_review_rating",
+            description="Maximum review rating (0-5 scale).",
+        )
+    )
+    .filter(
+        product.price
+        >= sl.Param(
+            "min_price",
+            description="Minimum price in USD.",
+        )
+    )
+    .filter(
+        product.price
+        <= sl.Param(
+            "max_price",
+            description="Maximum price in USD.",
         )
     )
 )
 
-similar_items_query = semantic_query.with_vector(index.product, sl.Param("product_id"))
+# Hard filters: categorical attributes using CategoryFilter pattern
+CategoryFilter = namedtuple(
+    "CategoryFilter", ["operator", "param_name", "category_name", "description"]
+)
+
+filters = [
+    CategoryFilter(
+        operator=product.category.contains_all,
+        param_name="category_include_all",
+        category_name="category",
+        description="User wants products in ALL of the following categories.",
+    ),
+    CategoryFilter(
+        operator=product.category.contains,
+        param_name="category_include_any",
+        category_name="category",
+        description="User wants products in at least one of the following categories.",
+    ),
+    CategoryFilter(
+        operator=product.category.not_contains,
+        param_name="category_exclude",
+        category_name="category",
+        description="User does not want products in any of the following categories.",
+    ),
+]
+
+for filter_item in filters:
+    param = sl.Param(
+        filter_item.param_name,
+        description=filter_item.description,
+        options=constants.CATEGORIES,
+    )
+    query = query.filter(filter_item.operator(param))
+
+# Natural language interface on top: calls LLM to parse
+# user query into structured superlinked query parameters
+query = query.with_natural_query(
+    natural_query=sl.Param("natural_query"),
+    client_config=gemini_config,
+    system_prompt=system_prompt,
+)
+
+# Similar items query: find products similar to a given product
+similar_items_query = query.with_vector(product, sl.Param("product_id"))

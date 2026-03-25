@@ -18,27 +18,27 @@ start-superlinked-server:
 
 load-data:
 	curl -X 'POST' \
-	'http://localhost:8080/data-loader/product_schema/run' \
+	'http://localhost:8080/data-loader/product/run' \
 	-H 'accept: application/json' \
 	-d ''
 
-post-filter-query:
-	curl -X POST \
-	'http://localhost:8080/api/v1/search/filter_query' \
+post-query:
+	curl -X 'POST' \
+	'http://localhost:8080/api/v1/search/product' \
 	-H 'accept: application/json' \
 	-H 'Content-Type: application/json' \
 	-d '{"natural_query": "books with a price lower than 100 and a rating bigger than 4", "limit": 3}' | jq '.'
 
-post-semantic-query:
+post-debug-query:
 	curl -X 'POST' \
-	'http://localhost:8080/api/v1/search/semantic_query' \
+	'http://localhost:8080/api/v1/search/product-debug' \
 	-H 'accept: application/json' \
 	-H 'Content-Type: application/json' \
-	-d '{"natural_query": "books with a price lower than 100 and a rating bigger than 4", "limit": 3}' | jq '.'
+	-d '{}' | jq '.'
 
 similar-item-query:
 	curl -X 'POST' \
-	'http://localhost:8080/api/v1/search/semantic_query' \
+	'http://localhost:8080/api/v1/search/similar_items' \
 	-H 'accept: application/json' \
 	-H 'Content-Type: application/json' \
 	-d '{"natural_query": "similar books to B07WP4RXHY with a rating bigger than 4.5 and a price lower than 100", "limit": 3}' | jq '.'
