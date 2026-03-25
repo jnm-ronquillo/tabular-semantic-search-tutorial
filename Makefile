@@ -13,8 +13,8 @@ download-and-process-full-dataset:
 start-qdrant:
 	docker compose up -d qdrant
 
-start-superlinked-server:
-	uv run python -m superlinked.server
+start-server:
+	uv run uvicorn superlinked_app.server:app --host 0.0.0.0 --port 8080 --reload
 
 load-data:
 	curl -X 'POST' \
