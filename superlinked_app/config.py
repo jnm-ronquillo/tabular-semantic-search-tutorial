@@ -20,40 +20,23 @@ class Settings(BaseSettings):
     )  # or change it for a bigger dataset to: processed_850_sample.jsonl
     GPU_EMBEDDING_THRESHOLD: int = 32
 
-    # MongoDB
-    USE_MONGO_VECTOR_DB: bool = False  # If 'False', we will use an InMemory vector database that requires no credentials.
-    MONGO_CLUSTER_URL: str | None = None
-    MONGO_CLUSTER_NAME: str = "free-cluster"
-    MONGO_DATABASE_NAME: str = "tabular-semantic-search"
-    MONGO_PROJECT_ID: str | None = None
-    MONGO_API_PUBLIC_KEY: SecretStr | None = None
-    MONGO_API_PRIVATE_KEY: SecretStr | None = None
+    # Qdrant
+    USE_QDRANT_VECTOR_DB: bool = False  # If 'False', we will use an InMemory vector database that requires no credentials.
+    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_API_KEY: SecretStr | None = None
 
     # OpenAI
     OPENAI_MODEL_ID: str = "gpt-4o"
     OPENAI_API_KEY: SecretStr
 
     @model_validator(mode="after")
-    def validate_mongo_config(self) -> "Settings":
-        """Validates that all MongoDB settings are properly configured when MongoDB is enabled."""
+    def validate_qdrant_config(self) -> "Settings":
+        """Validates that Qdrant settings are properly configured when Qdrant is enabled."""
 
-        if self.USE_MONGO_VECTOR_DB:
-            required_settings = {
-                "MONGO_CLUSTER_URL": self.MONGO_CLUSTER_URL,
-                "MONGO_DATABASE_NAME": self.MONGO_DATABASE_NAME,
-                "MONGO_CLUSTER_NAME": self.MONGO_CLUSTER_NAME,
-                "MONGO_PROJECT_ID": self.MONGO_PROJECT_ID,
-                "MONGO_API_PUBLIC_KEY": self.MONGO_API_PUBLIC_KEY,
-                "MONGO_API_PRIVATE_KEY": self.MONGO_API_PRIVATE_KEY,
-            }
-
-            missing_settings = [
-                key for key, value in required_settings.items() if not value
-            ]
-
-            if missing_settings:
+        if self.USE_QDRANT_VECTOR_DB:
+            if not self.QDRANT_URL:
                 raise ValueError(
-                    f"MongoDB is enabled but the following required settings are missing: {', '.join(missing_settings)}"
+                    "Qdrant is enabled but QDRANT_URL is missing."
                 )
 
         return self

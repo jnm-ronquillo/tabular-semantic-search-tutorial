@@ -21,7 +21,7 @@ def make_semantic_query(query: str, limit: int = 3) -> dict | None:
 def main():
     st.title("🔍 Search Amazon Products")
     st.markdown("### 📊 Using Tabular Semantic Search")
-    st.markdown("### ⚡ Powered by Superlinked and MongoDB")
+    st.markdown("### ⚡ Powered by Superlinked and Qdrant")
 
     st.markdown(
         "> Find products based on a product description, price, rating or other product ID/ASIN."

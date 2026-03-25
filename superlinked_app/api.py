@@ -24,19 +24,15 @@ product_loader_source: sl.DataLoaderSource = sl.DataLoaderSource(
     parser=product_data_loader_parser,
 )
 
-if settings.USE_MONGO_VECTOR_DB:
-    logger.info("Using MongoDBVectorDatabase as your vector database.")
-    vector_database = sl.MongoDBVectorDatabase(
-        settings.MONGO_CLUSTER_URL,
-        settings.MONGO_DATABASE_NAME,
-        settings.MONGO_CLUSTER_NAME,
-        settings.MONGO_PROJECT_ID,
-        settings.MONGO_API_PUBLIC_KEY.get_secret_value(),
-        settings.MONGO_API_PRIVATE_KEY.get_secret_value(),
+if settings.USE_QDRANT_VECTOR_DB:
+    logger.info("Using QdrantVectorDatabase as your vector database.")
+    vector_database = sl.QdrantVectorDatabase(
+        settings.QDRANT_URL,
+        settings.QDRANT_API_KEY.get_secret_value() if settings.QDRANT_API_KEY else None,
     )
 else:
     logger.info("Using InMemoryVectorDatabase as your vector database.")
-    vector_database = vector_database = sl.InMemoryVectorDatabase()
+    vector_database = sl.InMemoryVectorDatabase()
 
 executor = sl.RestExecutor(
     sources=[product_source, product_loader_source],

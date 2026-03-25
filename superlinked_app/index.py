@@ -23,10 +23,10 @@ category_space = sl.CategoricalSimilaritySpace(
     negative_filter=-1,
 )
 title_space = sl.TextSimilaritySpace(
-    text=product.title, model="Alibaba-NLP/gte-large-en-v1.5"
+    text=product.title, model="sentence-transformers/all-mpnet-base-v2"
 )
 description_space = sl.TextSimilaritySpace(
-    text=product.description, model="Alibaba-NLP/gte-large-en-v1.5"
+    text=product.description, model="sentence-transformers/all-mpnet-base-v2"
 )
 review_rating_maximizer_space = sl.NumberSpace(
     number=product.review_rating, min_value=-1.0, max_value=5.0, mode=sl.Mode.MAXIMUM

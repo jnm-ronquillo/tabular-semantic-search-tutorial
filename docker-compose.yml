@@ -1,0 +1,30 @@
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: eleccia-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      # Persistent storage for Qdrant data
+      - ./qdrant_data:/qdrant/storage
+      # Mount backups directory for restore
+      - ./qdrant_backups:/qdrant/backups:ro
+    environment:
+      # Enable collection snapshots
+      - QDRANT__SERVICE__ENABLE_TLS=false
+    networks:
+      - eleccia-network
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  eleccia-network:
+    driver: bridge
+

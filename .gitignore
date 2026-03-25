@@ -169,4 +169,6 @@ data/
 in_memory_vdb/
 
 # MacOs
-.DS_Store 
+.DS_Store
+
+qdrant_data/ 
