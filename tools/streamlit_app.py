@@ -43,17 +43,17 @@ def main():
             with st.spinner("Searching..."):
                 results = make_semantic_query(query, limit)
 
-            if results and "results" in results:
+            if results and "entries" in results:
                 st.subheader("Search Results")
 
-                for item in results["results"]:
+                for item in results["entries"]:
                     with st.container():
-                        book = item["obj"]
+                        fields = item["fields"]
                         st.markdown(f"""
-                        #### {book['title']}
-                        - **Price:** ${book['price']}
-                        - **Rating:** ⭐ {book['review_rating']} ({book['review_count']} reviews)
-                        - **ID:** {book['id']}
+                        #### {fields.get('title', 'N/A')}
+                        - **Price:** ${fields.get('price', 'N/A')}
+                        - **Rating:** ⭐ {fields.get('review_rating', 'N/A')} ({fields.get('review_count', 'N/A')} reviews)
+                        - **ID:** {item['id']}
                         ---
                         """)
         else:

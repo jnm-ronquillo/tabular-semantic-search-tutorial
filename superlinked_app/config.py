@@ -12,22 +12,21 @@ assert ENV_FILE.exists(), ".env doesn't exists at the expected location"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
     # Superlinked
     PROCESSED_DATASET_PATH: Path = (
         Path("data") / "processed_300_sample.jsonl"
     )  # or change it for a bigger dataset to: processed_850_sample.jsonl
-    GPU_EMBEDDING_THRESHOLD: int = 32
-
     # Qdrant
     USE_QDRANT_VECTOR_DB: bool = False  # If 'False', we will use an InMemory vector database that requires no credentials.
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: SecretStr | None = None
 
-    # OpenAI
-    OPENAI_MODEL_ID: str = "gpt-4o"
-    OPENAI_API_KEY: SecretStr
+    # Vertex AI / Gemini (via OpenAI-compatible API)
+    VERTEX_MODEL_ID: str = "google/gemini-2.5-flash"
+    VERTEX_LOCATION: str = "europe-southwest1"
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
 
     @model_validator(mode="after")
     def validate_qdrant_config(self) -> "Settings":

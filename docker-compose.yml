@@ -10,8 +10,6 @@ services:
     volumes:
       # Persistent storage for Qdrant data
       - ./qdrant_data:/qdrant/storage
-      # Mount backups directory for restore
-      - ./qdrant_backups:/qdrant/backups:ro
     environment:
       # Enable collection snapshots
       - QDRANT__SERVICE__ENABLE_TLS=false

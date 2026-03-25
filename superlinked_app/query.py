@@ -1,15 +1,40 @@
+import google.auth
+import google.auth.transport.requests
+from google.oauth2 import service_account
 from superlinked import framework as sl
 
 from superlinked_app import constants, index
 from superlinked_app.config import settings
 
-assert (
-    settings.OPENAI_API_KEY
-), "OPENAI_API_KEY must be set in environment variables to use natural language queries"
+VERTEX_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 
-openai_config = sl.OpenAIClientConfig(
-    api_key=settings.OPENAI_API_KEY.get_secret_value(), model=settings.OPENAI_MODEL_ID
+def _get_vertex_credentials():
+    """Get OAuth2 credentials from the service account file."""
+    from superlinked_app.config import ROOT_DIR
+
+    creds_path = ROOT_DIR / settings.GOOGLE_APPLICATION_CREDENTIALS
+    credentials = service_account.Credentials.from_service_account_file(
+        str(creds_path),
+        scopes=VERTEX_SCOPES,
+    )
+    credentials.refresh(google.auth.transport.requests.Request())
+    return credentials
+
+
+_credentials = _get_vertex_credentials()
+
+vertex_base_url = (
+    f"https://{settings.VERTEX_LOCATION}-aiplatform.googleapis.com/v1beta1/"
+    f"projects/{_credentials.project_id}/locations/{settings.VERTEX_LOCATION}/"
+    f"endpoints/openapi/"
+)
+
+gemini_config = sl.OpenAIClientConfig(
+    api_key=_credentials.token,
+    model=settings.VERTEX_MODEL_ID,
+    base_url=vertex_base_url,
+    project=_credentials.project_id,
 )
 
 
@@ -41,8 +66,9 @@ base_query = (
         },
     )
     .find(index.product)
+    .select_all()
     .limit(sl.Param("limit"))
-    .with_natural_query(sl.Param("natural_query"), openai_config)
+    .with_natural_query(sl.Param("natural_query"), gemini_config)
     .filter(
         index.product.type
         == sl.Param(
@@ -60,11 +86,12 @@ filter_query = (
         sl.Param("description_similar_clause_weight"),
     )
     .filter(
-        index.product.category
-        == sl.Param(
-            "filter_by_cateogry",
-            description="Used to only present items that have a specific cateogry",
-            options=constants.CATEGORIES,
+        index.product.category.contains(
+            sl.Param(
+                "filter_by_cateogry",
+                description="Used to only present items that have a specific cateogry",
+                options=constants.CATEGORIES,
+            )
         )
     )
     .filter(
@@ -95,11 +122,12 @@ semantic_query = (
         sl.Param("title_similar_clause_weight"),
     )
     .filter(
-        index.product.category
-        == sl.Param(
-            "filter_by_cateogry",
-            description="Used to only present items that have a specific cateogry",
-            options=constants.CATEGORIES,
+        index.product.category.contains(
+            sl.Param(
+                "filter_by_cateogry",
+                description="Used to only present items that have a specific cateogry",
+                options=constants.CATEGORIES,
+            )
         )
     )
 )

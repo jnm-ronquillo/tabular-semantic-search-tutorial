@@ -172,3 +172,4 @@ in_memory_vdb/
 .DS_Store
 
 qdrant_data/ 
+secrets/

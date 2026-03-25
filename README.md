@@ -27,7 +27,7 @@
         • Interactive web interface
       </td>
       <td>
-        • OpenAI LLMs<br/>
+        • Google Gemini LLMs<br/>
         • MongoDB Atlas Vector Search<br/>
         • Superlinked<br/>
         • FastAPI<br/>
@@ -50,7 +50,7 @@ Perfect for developers building search functionality in e-commerce or structured
 
 ## 💰 Cost Structure
 
-All tools used throughout the course will stick to their free tier, except OpenAI's API, which will cost you <1$ to run all our examples.
+All tools used throughout the course will stick to their free tier, except Google Vertex AI which has pay-per-use pricing (cost is minimal for these examples).
 
 
 ## 📚 Articles
